@@ -167,13 +167,13 @@ class MainWindow(QMainWindow):
 
         # --- UI元素 ---
         # 服务器IP、Port
-        self.server_ip_edit = QLineEdit("192.168.26.60")
+        self.server_ip_edit = QLineEdit("填写电脑ip")
         self.server_ip_edit.setFixedWidth(100)
         self.server_port_edit = QLineEdit("8089")
         self.server_port_edit.setFixedWidth(50)
 
-        # 客户端IP、Port（例如ESP8266的IP: 192.168.26.179）
-        self.client_ip_edit = QLineEdit("192.168.26.179")
+        # 客户端IP、Port
+        self.client_ip_edit = QLineEdit("填写esp8266ip")
         self.client_ip_edit.setFixedWidth(100)
         self.client_port_edit = QLineEdit("8089")
         self.client_port_edit.setFixedWidth(50)
