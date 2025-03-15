@@ -40,6 +40,8 @@ class NetworkThread(threading.Thread):
         self.stop_event = threading.Event()  # 使用Event来控制线程停止
         self.sock = None
         self.frame_times = deque(maxlen=10)
+        
+        self.current_conn = None  # 新增：保存当前有效的连接对象
 
     def run(self):
         if self.is_server:
@@ -102,6 +104,7 @@ class NetworkThread(threading.Thread):
         """
         实时接收并处理图片流
         """
+        self.current_conn = conn  # 新增：保存当前连接
         conn.settimeout(1.0)
         buffer = b""  # 缓存接收到的数据
         
@@ -139,6 +142,18 @@ class NetworkThread(threading.Thread):
             except Exception as e:
                 self.signals.log_signal.emit(f"[handle_connection异常] {e}\n")
                 break
+            
+    def send_data(self, data: str):
+        """发送文本数据到已连接的socket"""
+        if self.current_conn:
+            try:
+                self.current_conn.sendall(data.encode())
+                return True
+            except Exception as e:
+                self.signals.log_signal.emit(f"[发送失败] {e}\n")
+        else:
+            self.signals.log_signal.emit("[错误] 未建立连接，无法发送\n")
+        return False
 
     def close_socket(self):
         """关闭socket连接"""
@@ -176,6 +191,8 @@ class tcpui(QWidget):
         self.signals.image_signal.connect(self.show_image)
         self.signals.fps_signal.connect(self.update_fps)
         self.signals.update_client_port_signal.connect(self.update_client_port)
+
+        self.ui.sendButton.clicked.connect(self.send_message)
 
     def update_ui_for_network_status(self, running: bool):
         """更新UI界面状态，并改变输入框的背景颜色"""
@@ -236,13 +253,31 @@ class tcpui(QWidget):
         self.update_ui_for_network_status(False)
 
         self.append_log("网络已停止。\n")
+        
 
+    
     def append_log(self, text: str):
         """
         在日志窗口追加文本
         """
         self.ui.textBrowser.moveCursor(QTextCursor.End)
         self.ui.textBrowser.insertPlainText(text)
+        
+    def send_message(self):
+        """发送输入框中的消息"""
+        message = self.ui.sendEdit.text().strip()
+        if not message:
+            self.append_log("[提示] 发送内容不能为空\n")
+            return
+
+        if self.network_thread and self.network_thread.is_alive():
+            success = self.network_thread.send_data(message)
+            if success:
+                self.append_log(f"[已发送] {message}\n")
+                self.ui.sendEdit.clear()
+        else:
+            self.append_log("[错误] 网络未连接，无法发送\n")
+
 
     def show_image(self, img_data: bytes):
         """
